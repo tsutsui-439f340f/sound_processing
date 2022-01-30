@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tsutsui_lib as tt
+import SpeechProcessing as sp
 
 
 
@@ -27,7 +27,9 @@ def hanning(data,fs,N):
 def db(x,dBref):
 	y=20*np.log10(x/dBref)
 	return y
-
+def idb(x,dBref):
+	y=10**(x/20)
+	return y*dBref
 def aweightings(f):
 	if f[0]==0:
 		f[0]=1e-6
@@ -42,32 +44,37 @@ def stft(data,sr,fs,N,acf):
 	fft_axis=np.linspace(0,sr,fs)
 	a_scale=aweightings(fft_axis)
 	for i in range(N):
-		stft.append(db(acf*np.abs(np.fft.fft(data[i])/(fs/2)),2e-5))
+		z=np.abs(np.fft.fft(data[i])/(fs/2))
+		
+		
+		stft.append(db(acf*z,2e-5))
 	stft=np.array(stft)+a_scale
 	fft_mean=np.mean(stft,axis=0)
 	return stft,fft_mean,fft_axis
 	
-
+def istft(stft,sr,fs,N,acf):
+	istft=[]
+	fft_axis=np.linspace(0,sr,fs)
+	a_scale=aweightings(fft_axis)
 	
-
-			
-data,sr=tt.tsutsui_lib().load("ddd.wav")
-
+	stft-=a_scale
+	for i in range(N):
+		istft.append(db(acf*np.abs(np.fft.fft(data[i])/(fs/2)),2e-5))
+		istft.append(nstft[i])
+		
+	
+	fft_mean=np.mean(stft,axis=0)
+	return stft,fft_mean,fft_axis
+		
+data,sr=sp.SpeechProcessing().load("himari_hazaway.wav")
+print(data.shape[0]/sr)
 ts=0
-
-tp=8
-
+tp=4000
 data=data[sr*ts:sr*tp]
-
-overlap=50
+overlap=20
 fs=4096
-
-save_path="img2.jpg"
-
-
+save_path="img.jpg"
 ov,f,N=overlaps(data,sr,fs,overlap)
-
-
 v=1
 han,acf=hanning(ov,fs,N)
 
@@ -78,17 +85,17 @@ if v==0:
 elif v==1:
 	stft,mean,axis=stft(han,sr,fs,N,acf)
 	fig,ax=plt.subplots(2,1,figsize=(12,12))
-	ax[0].plot(np.linspace(0,len(data)/sr,len(data)),data)
-	ax[0].set_xlabel("time")
+	ax[0].plot(np.linspace(0,data.shape[0]/sr,data.shape[0]),data)
+	ax[0].set_xlabel("time[s]")
 	ax[0].set_ylabel("amplitude")
-	
+	ax[0].set_xticks(np.arange(0,data.shape[0]/sr),200)
 	img=ax[1].imshow(stft.T,vmin=-20,vmax=50,extent=[0,f,0,sr],aspect='auto',cmap='gnuplot2')
 	col=fig.colorbar(img)
 	ax[1].set_yticks(np.arange(0,20000,200))
 	col.set_label("[dB]")
 	ax[1].set_ylabel("Frequency[Hz]")
 	ax[1].set_xlabel("Time[s]")
-	ax[1].set_ylim(0,1300)
+	ax[1].set_ylim(0,3300)
 	plt.show()
 	
 	plt.savefig(save_path)
